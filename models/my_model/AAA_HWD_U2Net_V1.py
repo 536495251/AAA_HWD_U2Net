@@ -144,12 +144,12 @@ class ASAL(nn.Module):
     Returns x + sigmoid(attn) (residual addition).
     """
 
-    def __init__(self,s=32, f=0.5, min_target=7, base_kernel=3):
+    def __init__(self,target=7, base_kernel=3):
         super().__init__()
         assert base_kernel % 2 == 1, "base_kernel must be odd"
-        S =s
+
         # target receptive field
-        R_target = max(min_target, int(f * S))
+        R_target =target
         # compute required number of dilation-steps L
         # RF(L) ≈ 2^(L+1) - 1  => L ≈ ceil(log2((R_target+1)/2))
         L = int(ceil(log2((R_target + 1) / 2.0)))
@@ -229,34 +229,35 @@ class ChannelAttention(nn.Module):
         D_ = self.conv_2(D)
         B, C, H, W = D_.size()
         D_ = D_.view(B, C, H * W)
-
         E = self.conv_1(E).view(B, 1, H * W)
         E = self.softmax(E)
-
         context = torch.matmul(D_, E.transpose(1, 2)).unsqueeze(-1)  # [B, IC, 1, 1]
         context = self.conv_up(self.ACAL(context))  # [B, C, 1, 1]
-
         out = D * self.sigmoid(context)
         return out
-
-
 class SpatialAttention(nn.Module):
     """空间注意力分支"""
-
-    def __init__(self, in_channel, stride=1, ratio=4):
+    def __init__(self, in_channel, stride=1,ratio=4):
         super(SpatialAttention, self).__init__()
         inter_channel = in_channel // 2
-
+        self.inter_channel=inter_channel
         self.conv_3 = nn.Sequential(
             nn.Conv2d(in_channel, inter_channel, 1, stride, 0, bias=False),
             nn.BatchNorm2d(inter_channel),
             nn.ReLU(True),
-            # nn.Conv2d(inter_channel, inter_channel, 1, stride, 0, bias=False),
+            #nn.Conv2d(inter_channel, inter_channel, 1, stride, 0, bias=False),
             nn.Conv2d(inter_channel, 1, 1, stride, 0, bias=False),
             nn.BatchNorm2d(1),
             nn.ReLU(True)
         )
-
+        self.conv_3_ = nn.Sequential(
+            nn.Conv2d(in_channel, inter_channel, kernel_size=1, stride=stride, padding=0, bias=False),
+            nn.BatchNorm2d(self.inter_channel),
+            nn.ReLU(True),
+            nn.Conv2d(inter_channel, inter_channel, kernel_size=1, stride=stride, padding=0, bias=False),
+            nn.BatchNorm2d(inter_channel),
+            nn.ReLU(True)
+        )
         self.conv_4 = nn.Sequential(
             nn.Conv2d(in_channel, inter_channel, 1, stride, 0, bias=False),
             nn.BatchNorm2d(inter_channel),
@@ -265,13 +266,6 @@ class SpatialAttention(nn.Module):
             nn.BatchNorm2d(inter_channel),
             nn.ReLU(True)
         )
-        # self.conv_up = nn.Sequential(
-        #     nn.Conv2d(inter_channel, inter_channel // ratio, kernel_size=1),
-        #     nn.LayerNorm([inter_channel // ratio, 1, 1]),
-        #     nn.ReLU(inplace=True),
-        #     nn.Conv2d(inter_channel // ratio, 1, kernel_size=1),  # 输出单通道 mask
-        #     nn.Sigmoid()
-        # )
         self.conv_up = nn.Sequential(
             nn.Conv2d(inter_channel, inter_channel // ratio, kernel_size=1),
             nn.BatchNorm2d(inter_channel // ratio),
@@ -282,16 +276,26 @@ class SpatialAttention(nn.Module):
         self.softmax = nn.Softmax(dim=2)
         self.sigmoid = nn.Sigmoid()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.ASAL = ASAL()
+        self.ASAL = ASAL(target=32)
+        self.ACAL= ACAL(inter_channel)
 
     def forward(self, E, D):
+        E__=self.conv_3_(E)
+        batch, channel, height, width = E__.size()
+        E__ = self.ACAL(self.avg_pool(E__))  # [N, IC, 1, 1]
+        batch, channel, avg_e_h, avg_e_w = E__.size()
+        E__ = E__.view(batch, channel, avg_e_h * avg_e_w).permute(0, 2, 1)  # [N, 1, IC]
+        E__ = self.softmax(E__)
+        D__ = self.conv_4(D).view(batch, self.inter_channel, height * width)  # [N, IC, H*W]
+        context__ = torch.matmul(E__, D__).view(batch, 1, height, width)  # [N, 1, H, W]
+        context__ = F.layer_norm(context__, normalized_shape=(1, context__.shape[-2], context__.shape[-1]))
+        out__ = E * self.sigmoid(context__)  # [N, 1, H, W]
         E_ = self.conv_3(E)  # [B, 1, H, W]
         D_ = self.conv_4(D)  # [B, C, H, W]
         B, _, H, W = E.shape
         # 展开为序列
         E_vec = E_.view(B, 1, H * W)  # [B,1,HW]
         E_vec = F.softmax(E_vec, dim=-1)  # [B,1,HW]
-
         D_vec = D_.view(B, -1, H * W)  # [B,C',HW]
         # 计算空间 context
         context = torch.matmul(D_vec, E_vec.transpose(1, 2))  # [B,C',1]
@@ -301,9 +305,9 @@ class SpatialAttention(nn.Module):
         context = self.ASAL(context)  # [B,C',H,W]
         # 升维成 mask
         attn_mask = self.conv_up(context)  # [B,1,H,W]
-        out = E * attn_mask
-        return out
-
+        # 作用到 D 或 E（可选）
+        out_ = D * self.sigmoid(attn_mask)
+        return out_*0.4+out__*0.6
 
 class CSAF(nn.Module):
     """融合 ChannelAttention 和 SpatialAttention """
@@ -323,7 +327,6 @@ class CSAF(nn.Module):
         spa = self.spatial_att(E, D)
         out = self.out(chn + spa)
         return out
-
 
 # 小波下采样模块
 class HWD(nn.Module):
@@ -347,8 +350,6 @@ class HWD(nn.Module):
             x = self.bn(x)
             x = self.relu(x)
         return x
-
-
 class AAA_HWD_U2Net(nn.Module):
     def __init__(self, cfg: dict, out_ch: int = 1):
         super().__init__()
