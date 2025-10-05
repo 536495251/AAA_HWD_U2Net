@@ -1,0 +1,42 @@
+# datasets
+dataset:
+    IRSTD-1k:
+        image_size: 512
+        image_category: '.png'
+
+        image_path: '/home/huang/work/InfraredSmallTargets/Data/IRSTD-1k/IRSTD1k_Img'
+        mask_path: '/home/huang/work/InfraredSmallTargets/Data/IRSTD-1k/IRSTD1k_Label'
+        train: '/home/huang/work/InfraredSmallTargets/Data/IRSTD-1k/trainval.txt'
+        val: '/home/huang/work/InfraredSmallTargets/Data/IRSTD-1k/trainvaltest.txt'
+        test: '/home/huang/work/InfraredSmallTargets/Data/IRSTD-1k/test.txt'
+    NUDT-SIRST:
+        path: '/datasets/NUDT-SIRST'
+        image_size: 512
+        train: '/datasets/NUDT-SIRST/train.txt'
+        val: '/datasets/NUDT-SIRST/val.txt'
+
+# train
+train:
+    model: 'AAA_HWD_U2Net_V2'# 记得到model_create 导入相应的包
+    dataset: 'IRSTD-1k'
+    batch_size: 4
+    epochs: 800
+    start_epoch: 1
+    warm_up_epochs: 10
+    warmup: True
+    learning_rate: 0.001
+    min_lr: 1e-6
+    weight_decay: 1e-4
+    dropout_rate: 0.2
+    shuffle: True
+    num_workers: 2 # 多线程训练 for linux can be 2 or 4
+    pin_memory: True
+    resume: '' # 恢复训练
+    amp: True #Use torch.cuda.amp for mixed precision training
+    tensorboard_logdir: ''
+net_config:
+#model_list
+#model名都要注册在model_list
+model_list: ['AAA_HWD_U2Net_V1','AAA_HWD_U2Net_V2']
+
+
