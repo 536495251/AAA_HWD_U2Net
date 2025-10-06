@@ -1,16 +1,10 @@
 from typing import Union, List
-
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytorch_wavelets import DWTForward
 from thop import profile
 from math import ceil, log2, log
-import timm
-from safetensors.torch import load_file
-from torch.cuda import amp
-from utils.get_config import get_config
 
 class ConvBNReLU(nn.Module):
 
@@ -194,7 +188,6 @@ class ChannelAttention(nn.Module):
     def __init__(self, in_channel, stride=1, ratio=4):
         super(ChannelAttention, self).__init__()
         inter_channel = in_channel // 2
-
         self.conv_1 = nn.Sequential(
             nn.Conv2d(in_channel, inter_channel, 1, stride, 0, bias=False),
             nn.BatchNorm2d(inter_channel),
@@ -203,7 +196,6 @@ class ChannelAttention(nn.Module):
             nn.BatchNorm2d(1),
             nn.ReLU(True)
         )
-
         self.conv_2 = nn.Sequential(
             nn.Conv2d(in_channel, inter_channel, 1, stride, 0, bias=False),
             nn.BatchNorm2d(inter_channel),
@@ -212,7 +204,6 @@ class ChannelAttention(nn.Module):
             nn.BatchNorm2d(inter_channel),
             nn.ReLU(True)
         )
-
         self.conv_up = nn.Sequential(
             nn.Conv2d(inter_channel, inter_channel // ratio, kernel_size=1),
             nn.LayerNorm([inter_channel // ratio, 1, 1]),
@@ -220,7 +211,6 @@ class ChannelAttention(nn.Module):
             nn.Conv2d(inter_channel // ratio, in_channel, kernel_size=1),
             nn.LayerNorm([in_channel, 1, 1]),
         )
-
         self.ACAL = ACAL(inter_channel)
         self.softmax = nn.Softmax(dim=2)
         self.sigmoid = nn.Sigmoid()
