@@ -1,6 +1,4 @@
 from typing import Union, List
-import netron
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -139,19 +137,16 @@ class ASAL(nn.Module):
     Uses small kernel (3x3) + exponential dilation (1,2,4,...) to reach a target receptive field.
     Returns x + sigmoid(attn) (residual addition).
     """
-    def __init__(self, H, W, f=0.5, min_target=7, base_kernel=3):
+    def __init__(self, s=32, f=0.5, min_target=7, base_kernel=3):
         super().__init__()
         assert base_kernel % 2 == 1, "base_kernel must be odd"
-        self.H=H
-        self.W=W
-        S = min(H, W)
+        S = s
         # target receptive field
         R_target = max(min_target, int(f * S))
         # compute required number of dilation-steps L
         # RF(L) ≈ 2^(L+1) - 1  => L ≈ ceil(log2((R_target+1)/2))
         L = int(ceil(log2((R_target + 1) / 2.0)))
         self.L = max(1, L)  # at least 1 layer
-
         self.kernel = base_kernel
         self.layers = nn.ModuleList()
         # use small 2D convs with increasing dilation
@@ -183,7 +178,7 @@ class ASAL(nn.Module):
             h = self.act(h)
 
         attn = self.sigmoid(h)  # [B,1,H,W]
-        return x *(1+attn)   # residual add
+        return x+attn # residual add
 
 class ChannelAttention(nn.Module):
     """通道注意力分支"""
@@ -347,7 +342,7 @@ class DeepSpatialAttention(nn.Module):
         self.softmax = nn.Softmax(dim=2)
         self.sigmoid = nn.Sigmoid()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.ASAL = None
+        self.ASAL = ASAL(s=16)
         self.ACAL= ACAL(inter_channel)
 
     def forward(self, E, D):
@@ -368,12 +363,6 @@ class DeepSpatialAttention(nn.Module):
         E_vec = E_.view(B, 1, H * W)  # [B,1,HW]
         E_vec = F.softmax(E_vec, dim=-1)  # [B,1,HW]
         D_vec = D_.view(B, -1, H * W)  # [B,C',HW]
-        # 动态创建ASAL，使用当前特征图的真实尺寸
-        if self.ASAL is None:
-            self.ASAL = ASAL(H, W, f=0.5).to(E.device)
-        elif self.ASAL.H != H or self.ASAL.W != W:
-            # 如果尺寸变化，重新创建
-            self.ASAL = ASAL(H, W, f=0.5).to(E.device)
         # 计算空间 context
         context = torch.matmul(D_vec, E_vec.transpose(1, 2))  # [B,C',1]
         context = context.view(B, -1, 1, 1)  # [B,C',1,1]
@@ -418,7 +407,7 @@ class ShallowSpatialAttention(nn.Module):
         self.softmax = nn.Softmax(dim=2)
         self.sigmoid = nn.Sigmoid()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.ASAL = None
+        self.ASAL = ASAL(s=32)
 
     def forward(self, E, D):
         E_ = self.conv_3(E)  # [B, 1, H, W]
@@ -428,13 +417,6 @@ class ShallowSpatialAttention(nn.Module):
         E_vec = E_.view(B, 1, H * W)  # [B,1,HW]
         E_vec = F.softmax(E_vec, dim=-1)  # [B,1,HW]
         D_vec = D_.view(B, -1, H * W)  # [B,C',HW]
-        # 动态创建ASAL，使用当前特征图的真实尺寸
-        if self.ASAL is None:
-            self.ASAL = ASAL(H, W, f=0.5).to(E.device)
-        elif self.ASAL.H != H or self.ASAL.W != W:
-            # 如果尺寸变化，重新创建
-            self.ASAL = ASAL(H, W, f=0.5).to(E.device)
-        # 计算空间 context
         context = torch.matmul(D_vec, E_vec.transpose(1, 2))  # [B,C',1]
         context = context.view(B, -1, 1, 1)  # [B,C',1,1]
         # ASAL 细化空间特征（自适应空间建模）
@@ -584,7 +566,6 @@ if __name__ == '__main__':
     model = AAA_HWD_U2Net_V2(out_ch=1)
     # 模式设置
     training_mode = True  # True 训练模式，False 推理模式
-
     model.train() if training_mode else model.eval()
     # 模拟输入数据
     input_tensor = torch.randn(1, 3, 512, 512)  # Batch=1, RGB图像
@@ -602,6 +583,3 @@ if __name__ == '__main__':
             print(f"  Output[{i}] shape: {out.shape}")
     else:
         print(f"Inference Mode Output shape: {output.shape}")
-    # torch.onnx.export(model, input_tensor, "AAA_HWD_U2Net_.onnx")
-    # # 启动Netron查看
-    # netron.start("AAA_HWD_U2Net_.onnx")
