@@ -98,14 +98,15 @@ model.eval()
 
 # 性能指标
 
-|      Train Dataset       |    Validate Dataset     | Ratio |      Model       | IoU (%) | nIoU (%) | Fa (×10⁻⁶) | Pd (%) | FLOPs（G） | Params (M) |    Epochs    |
-|:------------------------:|:-----------------------:|:-----:|:----------------:|:-------:|:--------:|:----------:|:------:|:--------:|:----------:|:------------:|
-|         IRSTD-1K         |        IRSTD-1K         |  4:1  | AAA_HWD_U2Net_V0 |  73.18  |  71.18   |    9.88    | 95.71  |  89.36   |    4.11    | best:541/600 |
-|         IRSTD-1K         |       NUDT-SIRST        |  4:1  | AAA_HWD_U2Net_V0 |  45.50  |  50.75   |    3.19    | 68.34  |  89.36   |    4.11    | best:541/600 |
-|        NUDT-SIRST        |       NUDT-SIRST        |  1:1  | AAA_HWD_U2Net_V0 |  72.86  |  76.62   |    8.92    | 96.54  |  89.36   |    4.11    | best:470/600 |
-|        NUAA-SIRST        |       NUAA-SIRST        |  4:1  | AAA_HWD_U2Net_V0 |  76.84  |  69.97   |   34.75    | 98.94  |  89.36   |    4.11    | best:464/600 |
-|         IRSTD-1K         |        IRSTD-1K         |  4:1  | AAA_HWD_U2Net_V1 |  72.55  |  70.40   |   10.71    | 94.70  |  86.93   |    4.07    | best:668/800 |
-|         IRSTD-1K         |        IRSTD-1K         |  4:1  | AAA_HWD_U2Net_V2 |  72.69  |  70.29   |    9.27    | 95.36  |  89.24   |    4.08    | best:599/600 |
+| Train Dataset |     Validate Dataset      | Ratio |      Model       | IoU (%) | nIo<br/>U (%) | Fa (×10⁻⁶) | Pd (%) | FLOPs（G） | Params (M) |    Epochs    |
+|:-------------:|:-------------------------:|:-----:|:----------------:|:-------:|:--------:|:----------:|:------:|:--------:|:----------:|:------------:|
+|   IRSTD-1K    |         IRSTD-1K          |  4:1  | AAA_HWD_U2Net_V0 |  73.18  |  71.18   |    9.88    | 95.71  |  89.36   |    4.11    | best:541/600 |
+|   IRSTD-1K    |        NUDT-SIRST         |  4:1  | AAA_HWD_U2Net_V0 |  45.50  |  50.75   |    3.19    | 68.34  |  89.36   |    4.11    | best:541/600 |
+|  NUDT-SIRST   |        NUDT-SIRST         |  1:1  | AAA_HWD_U2Net_V0 |  72.86  |  76.62   |    8.92    | 96.54  |  89.36   |    4.11    | best:470/600 |
+|  NUAA-SIRST   |        NUAA-SIRST         |  4:1  | AAA_HWD_U2Net_V0 |  76.84  |  69.97   |   34.75    | 98.94  |  89.36   |    4.11    | best:464/600 |
+|   IRSTD-1K    |         IRSTD-1K          |  4:1  | AAA_HWD_U2Net_V1 |  72.55  |  70.40   |   10.71    | 94.70  |  86.93   |    4.07    | best:668/800 |
+|   IRSTD-1K    |         IRSTD-1K          |  4:1  | AAA_HWD_U2Net_V2 |  72.69  |  70.29   |    9.27    | 95.36  |  89.24   |    4.08    | best:599/600 |
+|  NUDT-SIRST   |        NUDT-SIRST         |  1:1  | AAA_HWD_U2Net_V2 |  73.45  |  76.85   |    6.62    | 97.92  |  89.24   |    4.08    | best:599/600 |
 
 **分析**：
 
@@ -148,7 +149,7 @@ outs = model(x)   # 主输出 + 侧输出列表
 
 ```
 @article{AAA_HWD_U2Net,
-  title={AAA-HWD-U2Net: Infrared Small Target Detection via Adaptive Aggregation and Wavelet Downsampling},
+  title={AAA-HWD-U2Net: Infrared Small Target Detection  Adaptive Attention Aggregation and Haar Wavelet Downsampling},
   author={Zhang. Zhen. et al.},
   year={2025},
   journal={Under Review}
