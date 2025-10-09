@@ -86,13 +86,11 @@ model.eval()
 
 * ASAL 感受野优化，ChannelAttention 引入 LayerNorm
 * SpatialAttention 优化 softmax 归一化与上下文提取
-* 优点：检测平滑性增强，背景干扰抑制更好
 
 ## V2
 
 * 引入 **ShallowSpatialAttention + DeepSpatialAttention**，按层选择不同空间策略
 * 解码层自适应选择深浅层注意力，权重 0.4/0.6 平衡浅层细节与深层语义
-* 优点：小目标检测精度稳定，Fa 最低（误警抑制最佳）
 
 ---
 
