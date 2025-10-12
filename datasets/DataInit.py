@@ -1,3 +1,5 @@
+import numpy as np
+
 from utils.get_config import get_config
 import random
 from PIL import Image, ImageOps, ImageFilter
@@ -23,10 +25,18 @@ class DataInit:
             self.images_name_list += [line.strip() for line in f.readlines()]
         self.data_len=len(self.images_name_list)
         self.image_size=self.dataset['image_size']
-        self.transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.28450727, 0.28450724, 0.28450724], [0.22880708, 0.22880709, 0.22880709]),
-        ])
+        self.crop_size=480
+        if dataset=='IRSTD-1k':
+            self.transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.28450727, 0.28450724, 0.28450724], [0.22880708, 0.22880709, 0.22880709]),
+            ])
+        if dataset=='NUAA-SIRST':
+            self.transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.39594397, 0.39577425, 0.39652345] ,[0.28985128, 0.28985047, 0.29031008]),
+            ])
+
     def data_transform(self,img,mask):
         if self.mode == 'train':
             return self.train_transform(img,mask)
@@ -72,7 +82,6 @@ class DataInit:
             img = img.filter(ImageFilter.GaussianBlur(
                 radius=random.random()))
         return img, mask
-
     def val_transform(self, img, mask):
 
         outsize = self.image_size
